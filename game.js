@@ -51,9 +51,33 @@ const SFX = {
   ko: () => { tone(500, 0.25, 'square', 0.1, 120); },
   count: () => tone(520, 0.14, 'square', 0.08),
   go: () => { tone(780, 0.4, 'square', 0.1); tone(1170, 0.4, 'triangle', 0.08); },
-  win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.25, 'triangle', 0.12, null, i * 0.12)),
+  win: () => { [523, 659, 784, 1047, 784, 1047, 1319].forEach((f, i) => { tone(f, 0.28, 'triangle', 0.16, null, i * 0.13); tone(f / 2, 0.28, 'square', 0.05, null, i * 0.13); }); },
+  cheer: () => { noise(1.6, 0.2, 1800); noise(1.2, 0.14, 3200, 0.2); noise(1.0, 0.1, 900, 0.4); },
   lose: () => [392, 330, 262].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, null, i * 0.16)),
 };
+
+function speak(text, pitch = 1.25, rate = 1.05) {
+  if (muted || !('speechSynthesis' in window)) return;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.pitch = pitch; u.rate = rate; u.volume = 1; speechSynthesis.speak(u); } catch (e) { /* ignore */ }
+}
+const music = { on: false, timer: null, step: 0, next: 0 };
+function musicTick() {
+  if (!AC || !music.on) return;
+  const spb = 60 / 148 / 2, ROOTS = [0, -3, -7, -5], PENT = [0, 2, 4, 7, 9, 12, 14];
+  while (music.next < AC.currentTime + 0.3) {
+    const t = Math.max(0, music.next - AC.currentTime), s = music.step, root = ROOTS[(s >> 3) & 3];
+    if (!muted) {
+      if (s % 2 === 0) tone(130.8 * Math.pow(2, root / 12), spb * 1.8, 'triangle', 0.1, null, t);
+      if (s % 4 === 0) tone(130, 0.14, 'sine', 0.13, 40, t);
+      if (s % 2 === 1) noise(0.05, 0.035, 7000, t);
+      if (s % 8 === 4) noise(0.12, 0.05, 3000, t);
+      if (Math.random() < 0.8) tone(523.3 * Math.pow(2, (root + pick(PENT)) / 12), spb * 0.9, 'square', 0.028, null, t);
+    }
+    music.next += spb; music.step++;
+  }
+}
+const musicStart = () => { if (!AC) return; music.on = true; music.next = AC.currentTime + 0.1; if (!music.timer) music.timer = setInterval(musicTick, 80); };
+const musicStop = () => { music.on = false; };
 
 // =================================================================================================
 //  renderer / scene / lights
@@ -75,7 +99,7 @@ scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x7a4ca8, 1.05));
 const sun = new THREE.DirectionalLight(0xfff1dd, 2.1);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26, near: 1, far: 90 });
+Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 90 });
 sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
 scene.add(sun, sun.target);
 const SUN_OFF = new THREE.Vector3(14, 30, 10);
@@ -124,7 +148,7 @@ const rocks = [];
   const rockMat = new THREE.MeshStandardMaterial({ color: 0xb69bd6, flatShading: true, roughness: 0.9 });
   const crystalMat = [0xff7ac8, 0x6be3ff, 0xffe27a].map((c) => new THREE.MeshStandardMaterial({ color: c, flatShading: true, emissive: c, emissiveIntensity: 0.35 }));
   for (let i = 0; i < 26; i++) {
-    const a = Math.random() * TAU, d = rnd(42, 120), s = rnd(1.2, 7);
+    const a = Math.random() * TAU, d = rnd(62, 150), s = rnd(1.2, 7);
     const m = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), i % 5 === 0 ? pick(crystalMat) : rockMat);
     m.position.set(Math.cos(a) * d, rnd(-45, 30), Math.sin(a) * d);
     m.userData = { rx: rnd(-0.4, 0.4), ry: rnd(-0.4, 0.4), by: m.position.y, ph: rnd(0, 6), sp: rnd(0.2, 0.6) };
@@ -198,7 +222,7 @@ function makeArena(type, n) {
   A.dispose = () => { scene.remove(A.group); disposeObj(A.group); };
   A.shrink = (dt) => {
     if (!A.plat) return;
-    A.R = Math.max(A.R0 * 0.5, A.R - dt * A.R0 * 0.012);
+    A.R = Math.max(A.R0 * 0.45, A.R - dt * A.R0 * 0.014);
     A.plat.scale.set(A.R / A.R0, 1, A.R / A.R0);
   };
   if (type === 'crumble') buildCrumble(A); else buildRound(A, type);
@@ -207,7 +231,7 @@ function makeArena(type, n) {
 
 function buildRound(A, type) {
   const spin = type === 'spinner';
-  const R = A.R0 = A.R = (spin ? 6.5 : 7) + A.n;
+  const R = A.R0 = A.R = (spin ? 11 : 12) + A.n * 1.6;
   A.name = spin ? 'Candy Spinner' : 'Grass Island';
   A.omega = spin ? 0.38 : 0;
   A.plat = new THREE.Group(); A.group.add(A.plat);
@@ -256,7 +280,7 @@ function buildRound(A, type) {
   A.safe = (x, z) => x * x + z * z < (A.R - 1.3) * (A.R - 1.3);
   A.spawn = (i, cnt) => { const a = (i / cnt) * TAU, d = A.R * 0.55; return [Math.sin(a) * d, Math.cos(a) * d]; };
   A.update = (dt, G) => {
-    if (G.matchTime > 55) { if (!A.shrinking) { A.shrinking = true; G.banner('⚠ ARENA SHRINKING!', 1.6); } A.shrink(dt); }
+    if (G.matchTime > 70) { if (!A.shrinking) { A.shrinking = true; G.banner('⚠ ARENA SHRINKING!', 1.6); } A.shrink(dt); }
     if (spin) {
       A.plat.rotation.y += A.omega * dt;
       const c = Math.cos(A.omega * dt), s = Math.sin(A.omega * dt);
@@ -270,7 +294,7 @@ function buildRound(A, type) {
 }
 
 function buildCrumble(A) {
-  const S = 2.6, R = A.R0 = A.R = 6.2 + A.n * 0.95;
+  const S = 2.8, R = A.R0 = A.R = 10 + A.n * 1.5;
   A.name = 'Crumble Tiles';
   const tiles = new Map();
   const cA = [0xff8fb1, 0x7fdcff], span = Math.ceil(R / S);
@@ -358,7 +382,7 @@ class Fighter {
   startAttack(G) {
     this.atkBuf = 0;
     let a;
-    if (this.meter >= 6) { a = SUPER; this.meter = 0; G.sfx('charge'); if (this.isPlayer) G.banner('SUPER!!', 0.8); }
+    if (this.meter >= 6) { a = SUPER; this.meter = 0; G.sfx('charge'); if (this.isPlayer) { G.banner('SUPER!!', 0.8); speak('Super!', 0.9, 0.95); } }
     else { do { a = pick(ATTACKS); } while (a === this.lastAtk); this.lastAtk = a; }
     this.atk = a; this.atkT = 0; this.hitSet = new Set(); this.hopDone = false;
     // gentle aim assist: face the closest enemy in front
@@ -628,7 +652,7 @@ G.eliminate = (f) => {
   const by = f.lastHitBy && G.matchTime - f.lastHitT < 6 ? f.lastHitBy : null;
   feed(by ? `💥 <b>${f.name}</b> was knocked out by <b>${by.name}</b>` : `🌀 <b>${f.name}</b> fell into the void`);
   G.sfx('ko');
-  if (f.isPlayer) { $('specHint').classList.remove('hidden'); G.banner('KNOCKED OUT!', 1.4); G.sfx('lose'); }
+  if (f.isPlayer) { $('specHint').classList.remove('hidden'); G.banner('KNOCKED OUT!', 1.4); G.sfx('lose'); speak('Knocked out!', 0.8, 0.95); }
   if (by && by.isPlayer) { by.cheer = false; }
   // little pop in the distance
   const c = G.camTarget; if (c) emit(f.pos.x, Math.max(f.pos.y, c.y - 8), f.pos.z, 20, { color: [0xff4fa3, 0xffd93d, 0x36d1ff], speed: 9, life: 0.8, size: 0.5, grav: 0 });
@@ -647,7 +671,7 @@ function clearWorld() {
 }
 
 function startMatch() {
-  ensureAudio();
+  ensureAudio(); musicStart();
   clearWorld();
   const c = G.cfg, n = clamp(c.count, 4, 8);
   const type = c.arena === 'random' ? pick(['island', 'spinner', 'crumble']) : c.arena;
@@ -678,18 +702,29 @@ function endMatch(winner) {
   G.state = 'over'; G.over = true; G.frozen = true; G.overT = 0; G.winner = winner;
   winner.cheer = true; winner.vel.set(0, 0, 0);
   G.banner(winner.isPlayer ? 'VICTORY!' : `${winner.name} wins!`, 2.2);
-  G.sfx(winner.isPlayer ? 'win' : 'lose');
+  musicStop();
+  if (winner.isPlayer) { G.sfx('win'); G.sfx('cheer'); setTimeout(() => speak('Victory! You are the champion!', 1.3, 1.0), 500); } else { G.sfx('lose'); setTimeout(() => speak(winner.name + ' wins!', 1, 1), 400); }
   if (winner.isPlayer) for (let i = 0; i < 4; i++) setTimeout(() => emit(winner.pos.x, 3, winner.pos.z, 40, { color: [0xff4fa3, 0xffd93d, 0x36d1ff, 0x7bff6a], speed: 11, life: 1.4, size: 0.3, grav: 7 }), i * 250);
 }
 
+function confetti() {
+  const box = $('end'); box.querySelectorAll('.confetti').forEach((e) => e.remove());
+  for (let i = 0; i < 70; i++) {
+    const c = document.createElement('i'); c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw'; c.style.background = pick(['#ff4fa3', '#ffd93d', '#36d1ff', '#7bff6a', '#a855f7']);
+    c.style.animationDuration = 2.2 + Math.random() * 2.5 + 's'; c.style.animationDelay = Math.random() * 1.2 + 's';
+    box.appendChild(c);
+  }
+}
 function showEnd() {
   const w = G.winner, p = G.player;
-  if (w === p) { $('endTitle').textContent = 'VICTORY!'; $('endSub').textContent = `You knocked out all ${G.fighters.length - 1} opponents. Hits landed: ${p.hits}.`; }
+  if (w === p) { confetti(); $('endTitle').textContent = '🏆 VICTORY! 🏆'; $('endSub').textContent = `You knocked out all ${G.fighters.length - 1} opponents. Hits landed: ${p.hits}.`; }
   else { $('endTitle').textContent = 'KNOCKED OUT'; $('endSub').textContent = `${w.name} wins. You placed ${ordinal(p.place)} of ${G.fighters.length}. Hits landed: ${p.hits}.`; }
   $('end').classList.remove('hidden'); $('specHint').classList.add('hidden');
 }
 
 function showMenu() {
+  musicStop(); try { speechSynthesis.cancel(); } catch (e) { /* ignore */ }
   clearWorld(); G.state = 'menu'; G.frozen = false; G.paused = false;
   $('hud').classList.add('hidden'); $('end').classList.add('hidden'); $('pause').classList.add('hidden'); $('menu').classList.remove('hidden');
   buildShowcase();
@@ -697,7 +732,7 @@ function showMenu() {
 
 function buildShowcase() {
   clearWorld();
-  G.arena = makeArena('island', 5); G.arena.update = () => {};
+  G.arena = makeArena('island', 0); G.arena.update = () => {};
   const f = new Fighter(ROSTER[G.cfg.char], false); f.pos.set(0, 0, 0); G.fighters = [f]; G.showcase = { f, t: 0, ang: 0 };
   G.frozen = false;
 }
@@ -743,7 +778,7 @@ canvas.addEventListener('mousedown', (e) => {
 });
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
-function toggleMute() { muted = !muted; $('muteBtn').textContent = muted ? '🔇' : '🔊'; }
+function toggleMute() { muted = !muted; if (muted) { try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } } $('muteBtn').textContent = muted ? '🔇' : '🔊'; }
 $('muteBtn').onclick = () => { ensureAudio(); toggleMute(); };
 
 // =================================================================================================
@@ -812,7 +847,7 @@ function sim(dt) {
     G.countdown -= dt;
     const c = Math.ceil(G.countdown - 0.4);
     if (c !== G.lastCount && c <= 3) { G.lastCount = c; if (c > 0) { G.banner(String(c), 0.8); G.sfx('count'); } }
-    if (G.countdown <= 0.4 && G.lastCount !== 0) { G.lastCount = 0; G.banner('FIGHT!', 0.9); G.sfx('go'); G.state = 'playing'; G.frozen = false; }
+    if (G.countdown <= 0.4 && G.lastCount !== 0) { G.lastCount = 0; G.banner('FIGHT!', 0.9); G.sfx('go'); speak('Fight!'); G.state = 'playing'; G.frozen = false; }
     readPlayerInput();
   }
   if (G.state === 'playing') {
@@ -820,7 +855,7 @@ function sim(dt) {
     readPlayerInput();
     for (const f of G.fighters) if (f.ai && f.alive) aiThink(f, dt, G);
   }
-  if (G.state === 'over') { G.overT += dt; if (G.overT > 2.2 && $('end').classList.contains('hidden')) showEnd(); }
+  if (G.state === 'over') { G.overT += dt; if (G.overT > (G.winner === G.player ? 3.4 : 2.2) && $('end').classList.contains('hidden')) showEnd(); }
   for (const f of G.fighters) f.update(dt, G);
   separate();
   G.arena.update(dt, G);
@@ -828,7 +863,7 @@ function sim(dt) {
 }
 
 // camera ----------------------------------------------------------------------------------------
-const CAM_D = 11.5, CAM_H = 7.2;
+const CAM_D = 12.5, CAM_H = 7.8;
 function updateCamera(dt, rdt) {
   let subject = G.player;
   if (G.state === 'menu') {

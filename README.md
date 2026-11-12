@@ -8,7 +8,7 @@ A cartoon 3D space brawler that runs in the browser. Fight 3–7 computer oppone
 |---|---|
 | Arrow keys (or WASD) | Move |
 | Left click | Attack (a random move each time) |
-| Space or right click | Jump (press again in the air for a double jump) |
+| Right click (or Space) | Jump (press again in the air for a double jump) |
 | Q / E | Turn the camera |
 | Esc / M / F | Pause / mute / fast-forward while spectating |
 

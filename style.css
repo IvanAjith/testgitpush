@@ -80,3 +80,6 @@ button{font-family:inherit;cursor:pointer}
   #helpHint{display:none}
   #dmgInfo{font-size:38px;min-width:80px}
 }
+
+.confetti{position:fixed;top:-20px;width:10px;height:16px;border-radius:2px;animation:fall linear infinite;pointer-events:none;z-index:25}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
