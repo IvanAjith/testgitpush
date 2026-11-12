@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Void Brawl</title>
+<meta name="description" content="Cartoon space brawler: knock every fighter off the floating arena. Last one standing wins.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<!-- HUD (in match) -->
+<div id="hud" class="hidden">
+  <div id="topBar"><span id="aliveInfo">6 left</span><span id="timerInfo">0:00</span></div>
+  <div id="feed"></div>
+  <div id="labels"></div>
+  <div id="popups"></div>
+  <div id="banner"></div>
+  <div id="bottomBar">
+    <div id="dmgInfo">0%</div>
+    <div id="meterWrap"><div id="meterPips"></div><div id="meterText">Land 6 hits for a SUPER</div></div>
+  </div>
+  <div id="specHint" class="hidden">You were knocked out — spectating. Press <b>F</b> to fast-forward.</div>
+  <div id="helpHint">Arrows move · Click attack · Space / Right-click jump · Q/E camera · Esc pause · M mute</div>
+</div>
+
+<!-- Menu -->
+<div id="menu">
+  <div class="panel">
+    <h1>VOID <span>BRAWL</span></h1>
+    <p class="sub">Knock everyone off the floating arena. Last fighter standing wins!</p>
+
+    <h3>1 · Pick your fighter</h3>
+    <div id="charGrid"></div>
+
+    <div class="row">
+      <div class="opt">
+        <h3>2 · Fighters</h3>
+        <div class="stepper"><button id="fMinus" aria-label="fewer fighters">−</button><b id="fCount">6</b><button id="fPlus" aria-label="more fighters">+</button></div>
+        <small>4 to 8 (you + computer)</small>
+      </div>
+      <div class="opt">
+        <h3>3 · Arena</h3>
+        <div id="arenaBtns" class="seg"></div>
+      </div>
+      <div class="opt">
+        <h3>4 · Difficulty</h3>
+        <div id="diffBtns" class="seg"></div>
+      </div>
+    </div>
+
+    <button id="startBtn">FIGHT!</button>
+
+    <div class="controls">
+      <span>⬅⬆⬇➡ Move</span><span>🖱 Left click: attack</span><span>Space / 🖱 Right click: jump (twice for double jump)</span><span>Q / E: turn camera</span>
+      <span>⭐ Land 6 hits → your next attack is a <b>SUPER</b> that launches enemies out of the arena</span>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden"><div class="panel small"><h2>Paused</h2><p>Press <b>Esc</b> to resume</p><button id="quitBtn" class="ghost">Quit to menu</button></div></div>
+
+<div id="end" class="overlay hidden">
+  <div class="panel small">
+    <h2 id="endTitle">VICTORY!</h2>
+    <p id="endSub"></p>
+    <div class="btns"><button id="againBtn">Play again</button><button id="menuBtn" class="ghost">Main menu</button></div>
+  </div>
+</div>
+
+<button id="muteBtn" title="Mute (M)">🔊</button>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>
