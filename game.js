@@ -60,11 +60,32 @@ function speak(text, pitch = 1.25, rate = 1.05) {
   if (muted || !('speechSynthesis' in window)) return;
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.pitch = pitch; u.rate = rate; u.volume = 1; speechSynthesis.speak(u); } catch (e) { /* ignore */ }
 }
-// Victory shout. Drop your own sound at sounds/aakupi.mp3 (or .wav/.ogg) and it plays instead of the synthetic voice.
+// Synthesised baby voice saying "aa-ku-pi!" (formant synthesis: a bright buzz shaped by vowel filters) + a giggle.
+function babyVoice() {
+  if (!AC || muted) return;
+  const t0 = AC.currentTime + 0.05;
+  const A_ = [[850, 9, 1.8], [1250, 10, 1.1], [2800, 12, 0.5]], U_ = [[380, 9, 1.8], [900, 10, 1.0], [2400, 12, 0.4]], I_ = [[300, 9, 1.8], [2350, 12, 1.2], [3100, 12, 0.6]];
+  const syl = (t, dur, p0, p1, F, vol = 0.4, vib = 14) => {
+    const o = AC.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(p0, t); o.frequency.linearRampToValueAtTime(p1, t + dur);
+    const lfo = AC.createOscillator(), lg = AC.createGain(); lfo.frequency.value = 6.5; lg.gain.value = vib; lfo.connect(lg); lg.connect(o.frequency);
+    const g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.035);
+    g.gain.setValueAtTime(vol, Math.max(t + 0.04, t + dur - 0.07)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    F.forEach(([f, q, a]) => { const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q; const fg = AC.createGain(); fg.gain.value = a; o.connect(bp); bp.connect(fg); fg.connect(g); });
+    g.connect(AC.destination); o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+  };
+  const burst = (t, f) => noise(0.045, 0.22, f, t - AC.currentTime);
+  syl(t0, 0.46, 430, 540, A_, 0.7, 16);                 // "aaa"
+  burst(t0 + 0.5, 1900); syl(t0 + 0.5, 0.2, 560, 500, U_, 0.6, 6);   // "ku"
+  burst(t0 + 0.74, 900); syl(t0 + 0.74, 0.42, 620, 800, I_, 0.7, 14); // "pi!" (rising)
+  [0, 1, 2].forEach((i) => syl(t0 + 1.28 + i * 0.14, 0.1, 760 - i * 25, 700 - i * 25, I_, 0.45, 0)); // hee-hee-hee
+}
+// Victory shout: the baby voice above, unless you drop your own sound at sounds/aakupi.mp3 (or .wav/.ogg).
 function aakupi() {
   if (muted) return;
   let done = false;
-  const fallback = () => { if (!done) { done = true; speak('Aakupi! Victory!', 1.5, 0.95); } };
+  const fallback = () => { if (!done) { done = true; babyVoice(); } };
   const tryFile = (i) => {
     const exts = ['mp3', 'wav', 'ogg'];
     if (i >= exts.length) return fallback();
