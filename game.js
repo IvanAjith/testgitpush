@@ -60,6 +60,20 @@ function speak(text, pitch = 1.25, rate = 1.05) {
   if (muted || !('speechSynthesis' in window)) return;
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.pitch = pitch; u.rate = rate; u.volume = 1; speechSynthesis.speak(u); } catch (e) { /* ignore */ }
 }
+// Victory shout. Drop your own sound at sounds/aakupi.mp3 (or .wav/.ogg) and it plays instead of the synthetic voice.
+function aakupi() {
+  if (muted) return;
+  let done = false;
+  const fallback = () => { if (!done) { done = true; speak('Aakupi! Victory!', 1.5, 0.95); } };
+  const tryFile = (i) => {
+    const exts = ['mp3', 'wav', 'ogg'];
+    if (i >= exts.length) return fallback();
+    const a = new Audio('sounds/aakupi.' + exts[i]); a.volume = 1;
+    a.onerror = () => tryFile(i + 1);
+    a.play().then(() => { done = true; }).catch(() => { if (a.error) return; fallback(); });
+  };
+  tryFile(0);
+}
 const music = { on: false, timer: null, step: 0, next: 0 };
 function musicTick() {
   if (!AC || !music.on) return;
@@ -703,7 +717,7 @@ function endMatch(winner) {
   winner.cheer = true; winner.vel.set(0, 0, 0);
   G.banner(winner.isPlayer ? 'VICTORY!' : `${winner.name} wins!`, 2.2);
   musicStop();
-  if (winner.isPlayer) { G.sfx('win'); G.sfx('cheer'); setTimeout(() => speak('Victory! You are the champion!', 1.3, 1.0), 500); } else { G.sfx('lose'); setTimeout(() => speak(winner.name + ' wins!', 1, 1), 400); }
+  if (winner.isPlayer) { G.sfx('win'); G.sfx('cheer'); setTimeout(aakupi, 450); } else { G.sfx('lose'); setTimeout(() => speak(winner.name + ' wins!', 1, 1), 400); }
   if (winner.isPlayer) for (let i = 0; i < 4; i++) setTimeout(() => emit(winner.pos.x, 3, winner.pos.z, 40, { color: [0xff4fa3, 0xffd93d, 0x36d1ff, 0x7bff6a], speed: 11, life: 1.4, size: 0.3, grav: 7 }), i * 250);
 }
 
