@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b1464">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
 <title>Void Brawl</title>
 <meta name="description" content="Cartoon space brawler: knock every fighter off the floating arena. Last one standing wins.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,6 +29,14 @@
     <div id="meterWrap"><div id="meterPips"></div><div id="meterText">Land 6 hits for a SUPER</div></div>
   </div>
   <div id="specHint" class="hidden">You were knocked out — spectating. Press <b>F</b> to fast-forward.</div>
+  <div id="touch">
+    <div id="camZone"></div>
+    <div id="stickZone"></div>
+    <div id="stickBase"><div id="stickKnob"></div></div>
+    <button id="btnJump" aria-label="Jump"><span>⤒</span>JUMP</button>
+    <button id="btnHit" aria-label="Hit"><span>👊</span>HIT</button>
+    <button id="pauseBtn" aria-label="Pause">⏸</button>
+  </div>
   <div id="helpHint">Arrows move · Left-click attack · Right-click jump (Space also works) · Q/E camera · Esc pause · M mute</div>
 </div>
 
@@ -61,7 +74,7 @@
   </div>
 </div>
 
-<div id="pause" class="overlay hidden"><div class="panel small"><h2>Paused</h2><p>Press <b>Esc</b> to resume</p><button id="quitBtn" class="ghost">Quit to menu</button></div></div>
+<div id="pause" class="overlay hidden"><div class="panel small"><h2>Paused</h2><p>Press <b>Esc</b> to resume</p><button id="resumeBtn" class="ghost">Resume</button><button id="quitBtn" class="ghost">Quit to menu</button></div></div>
 
 <div id="end" class="overlay hidden">
   <div class="panel small">

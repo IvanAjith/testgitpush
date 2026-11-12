@@ -1,0 +1,7 @@
+{
+  "appId": "com.voidbrawl.game",
+  "appName": "Void Brawl",
+  "webDir": "www",
+  "backgroundColor": "#1b1464",
+  "android": { "allowMixedContent": false }
+}

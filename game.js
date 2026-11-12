@@ -13,6 +13,8 @@ const dampAng = (a, b, k, dt) => a + angDiff(a, b) * (1 - Math.exp(-k * dt));
 const rnd = (a, b) => a + Math.random() * (b - a);
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const $ = (id) => document.getElementById(id);
+const isTouch = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
+if (isTouch) document.body.classList.add('is-touch');
 const ordinal = (n) => n + (['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)]);
 
 // =================================================================================================
@@ -119,7 +121,7 @@ const musicStop = () => { music.on = false; };
 // =================================================================================================
 const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, isTouch ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
@@ -133,7 +135,7 @@ window.addEventListener('resize', resize); resize();
 scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x7a4ca8, 1.05));
 const sun = new THREE.DirectionalLight(0xfff1dd, 2.1);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 90 });
 sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.04;
 scene.add(sun, sun.target);
@@ -707,6 +709,7 @@ function clearWorld() {
 
 function startMatch() {
   ensureAudio(); musicStart();
+  if (isTouch) { try { const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {}); if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* ignore */ } }
   clearWorld();
   const c = G.cfg, n = clamp(c.count, 4, 8);
   const type = c.arena === 'random' ? pick(['island', 'spinner', 'crumble']) : c.arena;
@@ -799,19 +802,61 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   keys.add(e.code);
   if (e.code === 'Space' && inGame()) pend.jump = true;
-  if (e.code === 'Escape' && inGame()) { G.paused = !G.paused; $('pause').classList.toggle('hidden', !G.paused); }
+  if (e.code === 'Escape') togglePause();
   if (e.code === 'KeyM') toggleMute();
   if (e.code === 'KeyF' && G.state === 'playing' && !G.player.alive) G.ff = !G.ff;
 });
+function togglePause() { if (!inGame()) return; G.paused = !G.paused; $('pause').classList.toggle('hidden', !G.paused); }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
 canvas.addEventListener('mousedown', (e) => {
   ensureAudio();
+  if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return; // ignore touch-emulated mouse events
   if (!inGame() || G.paused) return;
   if (e.button === 0) pend.attack = true; else if (e.button === 2) pend.jump = true;
   e.preventDefault();
 });
 window.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ---- touch controls: floating thumb-stick (left), HIT / JUMP buttons (right), drag right side to turn the camera
+const touchMove = { x: 0, y: 0 };
+(function setupTouch() {
+  const zone = $('stickZone'), base = $('stickBase'), knob = $('stickKnob'), RAD = 58;
+  let pid = null, ox = 0, oy = 0;
+  zone.addEventListener('pointerdown', (e) => {
+    if (pid !== null) return; ensureAudio(); pid = e.pointerId; zone.setPointerCapture(pid); ox = e.clientX; oy = e.clientY;
+    base.style.left = ox + 'px'; base.style.top = oy + 'px'; base.classList.add('on'); e.preventDefault();
+  });
+  zone.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== pid) return;
+    let dx = e.clientX - ox, dy = e.clientY - oy; const d = Math.hypot(dx, dy);
+    if (d > RAD) { ox += (dx / d) * (d - RAD); oy += (dy / d) * (d - RAD); dx = e.clientX - ox; dy = e.clientY - oy; base.style.left = ox + 'px'; base.style.top = oy + 'px'; }
+    const m = Math.min(1, Math.hypot(dx, dy) / RAD), a = Math.atan2(dy, dx), mag = m < 0.18 ? 0 : m;
+    knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    touchMove.x = Math.cos(a) * mag; touchMove.y = -Math.sin(a) * mag;
+  });
+  const end = (e) => {
+    if (e.pointerId !== pid) return; pid = null; touchMove.x = touchMove.y = 0;
+    base.classList.remove('on'); base.style.left = ''; base.style.top = ''; knob.style.transform = '';
+  };
+  zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
+
+  const cz = $('camZone'); let cp = null, lx = 0;
+  cz.addEventListener('pointerdown', (e) => { if (cp !== null) return; cp = e.pointerId; lx = e.clientX; cz.setPointerCapture(cp); });
+  cz.addEventListener('pointermove', (e) => { if (e.pointerId !== cp) return; G.camYaw -= (e.clientX - lx) * 0.008; lx = e.clientX; });
+  const cend = (e) => { if (e.pointerId === cp) cp = null; };
+  cz.addEventListener('pointerup', cend); cz.addEventListener('pointercancel', cend);
+
+  const bind = (id, fn) => {
+    const el = $(id);
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); ensureAudio(); fn(); el.classList.add('down'); });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => el.addEventListener(t, () => el.classList.remove('down')));
+  };
+  bind('btnHit', () => { if (inGame() && !G.paused) pend.attack = true; });
+  bind('btnJump', () => { if (inGame() && !G.paused) pend.jump = true; });
+  $('pauseBtn').addEventListener('pointerdown', (e) => { e.preventDefault(); togglePause(); });
+  $('resumeBtn').onclick = togglePause;
+})();
 
 function toggleMute() { muted = !muted; if (muted) { try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } } $('muteBtn').textContent = muted ? '🔇' : '🔊'; }
 $('muteBtn').onclick = () => { ensureAudio(); toggleMute(); };
@@ -863,6 +908,7 @@ function readPlayerInput() {
   let up = 0, rt = 0;
   if (keys.has('ArrowUp') || keys.has('KeyW')) up += 1; if (keys.has('ArrowDown') || keys.has('KeyS')) up -= 1;
   if (keys.has('ArrowRight') || keys.has('KeyD')) rt += 1; if (keys.has('ArrowLeft') || keys.has('KeyA')) rt -= 1;
+  up += touchMove.y; rt += touchMove.x;
   const cy = G.camYaw, fx = -Math.sin(cy), fz = -Math.cos(cy), rx = Math.cos(cy), rz = -Math.sin(cy);
   p.input.mx = fx * up + rx * rt; p.input.mz = fz * up + rz * rt;
   if (pend.attack) p.input.attack = true; if (pend.jump) p.input.jump = true;

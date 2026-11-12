@@ -1,0 +1,65 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: ['claude/**', master, main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Collect web files
+        run: |
+          mkdir -p www
+          cp index.html style.css game.js characters.js manifest.json www/
+          cp -r lib icons sounds www/
+
+      - name: Create Android project
+        run: |
+          npm install
+          npx cap add android
+
+      - name: Patch (landscape, fullscreen, icon)
+        run: |
+          pip install pillow
+          python3 scripts/patch_android.py
+
+      - name: Sync web files into the app
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk VoidBrawl.apk
+
+      - name: Upload as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoidBrawl-apk
+          path: VoidBrawl.apk
+
+      - name: Publish as a downloadable release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Void Brawl for Android (latest)
+          body: Download **VoidBrawl.apk** below on your Android phone, open it and install (allow "install unknown apps" if asked).
+          prerelease: true
+          files: VoidBrawl.apk

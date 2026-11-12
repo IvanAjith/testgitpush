@@ -33,6 +33,13 @@ Then visit <http://localhost:8000>.
 
 No build step is needed. Three.js is bundled in `lib/`, so it works offline.
 
+## Play on an Android phone
+
+On a phone the game shows a **thumb-stick on the left** and **JUMP / HIT buttons on the right** (drag the right side of the screen to turn the camera).
+
+- **APK:** every push builds an installable APK on GitHub (see `.github/workflows/android.yml`). Download `VoidBrawl.apk` from the repo's **Releases** page (tag `android-latest`) on your phone, open it and allow "install unknown apps".
+- **No-APK option:** once the game is hosted on GitHub Pages, open the link in Chrome on your phone and choose **Add to Home screen**.
+
 ## Files
 
 - `index.html`, `style.css`: menu and HUD.
